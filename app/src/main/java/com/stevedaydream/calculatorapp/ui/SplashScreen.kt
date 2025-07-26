@@ -32,7 +32,7 @@ fun SplashScreen(navController: NavHostController) {
     // ⏳ 啟動動畫與跳轉
     LaunchedEffect(true) {
         scale = 1f
-        delay(1000)
+        delay(1300)
         navController.navigate("calculator") {
             popUpTo("splash") { inclusive = true }
         }
@@ -53,7 +53,8 @@ fun SplashScreen(navController: NavHostController) {
                     .scale(animatedScale)
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Mini Calc Web", fontSize = 22.sp, color = Color(0xFF4A148C)) // 深紫字
+            Text("Mini Calc App", fontSize = 22.sp, color = Color(0xFF4A148C)) // 深紫字
+            Text("by stevedaydream", fontSize = 12.sp, color = Color(0xFF4A148C)) // 深紫字
         }
     }
 }
