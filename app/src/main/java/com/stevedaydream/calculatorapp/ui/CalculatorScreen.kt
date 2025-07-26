@@ -236,10 +236,13 @@ fun CalculatorScreen(
                             val record = SavedRecord(
                                 time = System.currentTimeMillis(),
                                 items = Gson().toJson(itemsMap),
-                                total = totalPrice
+                                total = totalPrice,
+                                barcode = barcodeText.ifBlank { null }
                             )
                             recordDao.insert(record)
                             saveMsg = "✅ 資料已儲存！"
+                            barcodeText = ""
+
                         } catch (e: Exception) {
                             saveMsg = "❌ 儲存失敗：${e.localizedMessage}"
                         }
@@ -264,7 +267,7 @@ fun CalculatorScreen(
                 Text(
                     "🕒 ${
                         java.text.SimpleDateFormat("HH:mm:ss").format(Date(record.time))
-                    }  共${itemsMap.values.sum()}項, 金額：${record.total}"
+                    }  條碼:${record.barcode} 共${itemsMap.values.sum()}項, 金額：${record.total}"
                 )
             }
         }

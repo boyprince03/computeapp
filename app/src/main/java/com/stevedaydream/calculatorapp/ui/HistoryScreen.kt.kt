@@ -55,6 +55,9 @@ fun RecordRow(record: SavedRecord) {
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text("🕒 ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date(record.time))}")
+            if (record.barcode != null) {
+                Text("條碼：${record.barcode}")
+            }
             itemsMap.forEach { (name, count) ->
                 Text("　- $name x $count")
             }

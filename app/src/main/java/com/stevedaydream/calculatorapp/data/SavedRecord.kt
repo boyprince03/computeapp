@@ -8,5 +8,6 @@ data class SavedRecord(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val time: Long,
     val items: String,      // JSON 格式存 {名稱:數量, ...}
-    val total: Int
+    val total: Int,
+    val barcode: String? = null    // 新增這一行
 )
