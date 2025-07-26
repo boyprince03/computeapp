@@ -21,6 +21,7 @@ import com.stevedaydream.calculatorapp.ui.EditScreen
 import com.stevedaydream.calculatorapp.ui.MainScreen
 import kotlinx.coroutines.runBlocking
 import com.stevedaydream.calculatorapp.ui.HistoryScreen
+import com.stevedaydream.calculatorapp.ui.SplashScreen
 
 @Composable
 fun AppNavGraph(
@@ -30,8 +31,11 @@ fun AppNavGraph(
 ) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "calculator") {
+    NavHost(navController = navController, startDestination = "splash") {
         // 🏠 主畫面：顯示所有項目
+        composable("splash") {
+            SplashScreen(navController)
+        }
         composable("home") {
             MainScreen(
                 dao = dao,
