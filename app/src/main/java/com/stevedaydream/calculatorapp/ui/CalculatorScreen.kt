@@ -51,10 +51,11 @@ fun CalculatorScreen(
                 (selectedCategory.isBlank() || it.category == selectedCategory)
     }
 
-    val totalPrice = filteredItems.sumOf { item ->
+    val totalPrice = allItems.sumOf { item ->
         val count = selectedCounts[item.id] ?: 0
         item.price * count
     }
+
 
     val scanLauncher = rememberLauncherForActivityResult(
         contract = ScanContract()
@@ -64,7 +65,9 @@ fun CalculatorScreen(
 
     val coroutineScope = rememberCoroutineScope()
     var saveMsg by remember { mutableStateOf<String?>(null) }
-    val selectedList = filteredItems.filter { (selectedCounts[it.id] ?: 0) > 0 }
+    val selectedList = allItems.filter { (selectedCounts[it.id] ?: 0) > 0 }
+
+
 
     Column(
         modifier = Modifier
@@ -111,7 +114,7 @@ fun CalculatorScreen(
             onOptionSelected = {
                 selectedDepartment = it
                 selectedCategory = ""
-                selectedCounts = mutableMapOf()
+
             }
         )
 
@@ -121,7 +124,7 @@ fun CalculatorScreen(
             selectedOption = selectedCategory,
             onOptionSelected = {
                 selectedCategory = it
-                selectedCounts = mutableMapOf()
+
             },
             enabled = selectedDepartment.isNotBlank()
         )
