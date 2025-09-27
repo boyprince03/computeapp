@@ -19,11 +19,8 @@ import com.journeyapps.barcodescanner.ScanOptions
 import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanContract
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stevedaydream.calculatorapp.data.SavedRecordDao
-import kotlinx.coroutines.launch
-import com.stevedaydream.calculatorapp.data.SavedRecord
-import java.util.Date
-import com.google.gson.Gson
 
 @Composable
 fun CalculatorScreen(
@@ -32,49 +29,39 @@ fun CalculatorScreen(
     onManageClick: () -> Unit,
     onHistoryClick: () -> Unit
 ) {
-    val allItems by dao.getAll().collectAsState(initial = emptyList())
+    // 使用 viewModel() 輔助函式來取得 ViewModel 實例
+    val viewModel: CalculatorViewModel = viewModel(
+        factory = ViewModelFactory(dao, recordDao)
+    )
 
-    var selectedDepartment by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("") }
-    var selectedCounts by remember { mutableStateOf(mutableMapOf<Int, Int>()) }
-    var barcodeText by remember { mutableStateOf("") }
+    // 從 ViewModel 收集狀態
+    val barcodeText by viewModel.barcodeText.collectAsState()
+    val selectedDepartment by viewModel.selectedDepartment.collectAsState()
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val departmentList by viewModel.departmentList.collectAsState()
+    val categoryList by viewModel.categoryList.collectAsState()
+    val filteredItems by viewModel.filteredItems.collectAsState()
+    val selectedCounts by viewModel.selectedCounts.collectAsState()
+    val selectedList by viewModel.selectedList.collectAsState()
+    val totalPrice by viewModel.totalPrice.collectAsState()
+    val saveMsg by viewModel.saveMsg.collectAsState()
 
-    val departmentList = allItems.map { it.department }.distinct()
-    val categoryList = if (selectedDepartment.isNotBlank()) {
-        allItems.filter { it.department == selectedDepartment }
-            .map { it.category }
-            .distinct()
-    } else emptyList()
-
-    val filteredItems = allItems.filter {
-        (selectedDepartment.isBlank() || it.department == selectedDepartment) &&
-                (selectedCategory.isBlank() || it.category == selectedCategory)
-    }
-
-    val totalPrice = allItems.sumOf { item ->
-        val count = selectedCounts[item.id] ?: 0
-        item.price * count
-    }
+    val allRecords by recordDao.getAll().collectAsState(initial = emptyList())
 
 
     val scanLauncher = rememberLauncherForActivityResult(
         contract = ScanContract()
     ) { result: ScanIntentResult ->
-        result.contents?.let { barcodeText = it }
+        result.contents?.let { viewModel.onBarcodeTextChange(it) }
     }
-
-    val coroutineScope = rememberCoroutineScope()
-    var saveMsg by remember { mutableStateOf<String?>(null) }
-    val selectedList = allItems.filter { (selectedCounts[it.id] ?: 0) > 0 }
-
-
 
     Column(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
     ) {
-        // -------- 標題與管理資料按鈕 --------
+        // ... (標題與管理資料按鈕 - 這部分不變) ...
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -90,9 +77,10 @@ fun CalculatorScreen(
         }
         Spacer(modifier = Modifier.height(12.dp))
 
+
         BarcodeInputRow(
             barcodeText = barcodeText,
-            onBarcodeTextChange = { barcodeText = it },
+            onBarcodeTextChange = { viewModel.onBarcodeTextChange(it) },
             onScanClick = {
                 scanLauncher.launch(
                     ScanOptions().apply {
@@ -111,32 +99,21 @@ fun CalculatorScreen(
             label = "科別",
             options = departmentList,
             selectedOption = selectedDepartment,
-            onOptionSelected = {
-                selectedDepartment = it
-                selectedCategory = ""
-
-            }
+            onOptionSelected = { viewModel.onDepartmentSelected(it) }
         )
 
         DropdownSelector(
             label = "類別",
             options = categoryList,
             selectedOption = selectedCategory,
-            onOptionSelected = {
-                selectedCategory = it
-
-            },
+            onOptionSelected = { viewModel.onCategorySelected(it) },
             enabled = selectedDepartment.isNotBlank()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // 表單與清單區
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .weight(1f, fill = false)
-        ) {
+        Column {
             if (selectedDepartment.isNotBlank()) {
                 Text(
                     "✅ 可選項目：${if (selectedCategory.isNotBlank()) "$selectedDepartment / $selectedCategory" else selectedDepartment}"
@@ -147,6 +124,7 @@ fun CalculatorScreen(
                         .heightIn(max = 300.dp)
                 ) {
                     if (filteredItems.isEmpty()) {
+                        // ... (暫無項目 - 這部分不變) ...
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -163,37 +141,22 @@ fun CalculatorScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Checkbox(
-                                            checked = selectedCounts[item.id]?.let { it > 0 } ?: false,
-                                            onCheckedChange = { checked ->
-                                                selectedCounts = selectedCounts.toMutableMap().apply {
-                                                    if (checked) {
-                                                        this[item.id] = this[item.id]?.coerceAtLeast(1) ?: 1
-                                                    } else {
-                                                        this[item.id] = 0
-                                                    }
-                                                }
+                                            checked = (selectedCounts[item.id] ?: 0) > 0,
+                                            onCheckedChange = { isChecked ->
+                                                viewModel.onItemCheckedChange(item, isChecked)
                                             }
                                         )
                                         Text("${item.name} - \$${item.price}")
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        IconButton(onClick = {
-                                            selectedCounts = selectedCounts.toMutableMap().apply {
-                                                val now = (this[item.id] ?: 1)
-                                                if (now > 1) this[item.id] = now - 1
-                                            }
-                                        }) { Text("-") }
-                                        Text("${selectedCounts[item.id]?.takeIf { it > 0 } ?: 1}")
-                                        IconButton(onClick = {
-                                            selectedCounts = selectedCounts.toMutableMap().apply {
-                                                val now = (this[item.id] ?: 0)
-                                                this[item.id] = now + 1
-                                            }
-                                        }) { Text("+") }
+                                        IconButton(onClick = { viewModel.onItemCountChange(item, -1) }) { Text("-") }
+                                        Text("${selectedCounts[item.id] ?: 0}")
+                                        IconButton(onClick = { viewModel.onItemCountChange(item, 1) }) { Text("+") }
                                     }
                                 }
                             }
@@ -225,58 +188,37 @@ fun CalculatorScreen(
         ) {
             Text("💰 總金額：$totalPrice", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.width(16.dp))
-            TextButton(onClick = {
-                selectedCounts = mutableMapOf()
-                selectedCategory = ""
-            }) {
+            TextButton(onClick = { viewModel.resetSelections() }) {
                 Text("重置")
             }
-            Button(onClick = {
-                if (selectedList.isNotEmpty()) {
-                    coroutineScope.launch {
-                        try {
-                            val itemsMap = selectedList.associate { it.name to (selectedCounts[it.id] ?: 0) }
-                            val record = SavedRecord(
-                                time = System.currentTimeMillis(),
-                                items = Gson().toJson(itemsMap),
-                                total = totalPrice,
-                                barcode = barcodeText.ifBlank { null }
-                            )
-                            recordDao.insert(record)
-                            saveMsg = "✅ 資料已儲存！"
-                            barcodeText = ""
-
-                        } catch (e: Exception) {
-                            saveMsg = "❌ 儲存失敗：${e.localizedMessage}"
-                        }
-                    }
-                } else {
-                    saveMsg = "⚠️ 請先選取項目"
-                }
-            }) {
+            Button(onClick = { viewModel.saveRecord() }) {
                 Text("儲存資料")
             }
         }
         saveMsg?.let {
             Text(it, color = MaterialTheme.colorScheme.primary)
         }
-
-        val allRecords by recordDao.getAll().collectAsState(initial = emptyList())
+        // ... (歷史紀錄部分不變) ...
         if (allRecords.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             Text("歷史儲存紀錄：", style = MaterialTheme.typography.titleMedium)
-            allRecords.forEach { record ->
-                val itemsMap = Gson().fromJson<Map<String, Int>>(record.items, Map::class.java)
+            // 只顯示最近5筆
+            allRecords.take(5).forEach { record ->
+                val itemsMap: Map<String, Int> = remember(record.items) {
+                    com.google.gson.Gson().fromJson<Map<String, Int>>(record.items, object : com.google.gson.reflect.TypeToken<Map<String, Int>>() {}.type)
+                }
                 Text(
                     "🕒 ${
-                        java.text.SimpleDateFormat("HH:mm:ss").format(Date(record.time))
-                    }  條碼:${record.barcode} 共${itemsMap.values.sum()}項, 金額：${record.total}"
+                        java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(record.time))
+                    }  條碼:${record.barcode ?: "-"} 共${itemsMap.values.sum()}項, 金額：${record.total}"
                 )
             }
         }
     }
 }
 
+// ... (BarcodeInputRow 和 DropdownSelector 函式不變) ...
+// (請保留您原有的 BarcodeInputRow 和 DropdownSelector 程式碼)
 @Composable
 fun BarcodeInputRow(
     barcodeText: String,
@@ -314,7 +256,7 @@ fun DropdownSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column {
-        Text(label)
+        // Text(label) // 標籤可以整合進 OutlinedTextField
         Box {
             OutlinedTextField(
                 value = selectedOption.ifBlank { "請選擇" },
@@ -324,7 +266,7 @@ fun DropdownSelector(
                     .fillMaxWidth()
                     .then(if (!enabled) Modifier.alpha(0.5f) else Modifier),
                 enabled = enabled,
-                label = { Text("請選擇") },
+                label = { Text(label) }, // 將 label 放在這裡
                 trailingIcon = {
                     IconButton(
                         onClick = { if (enabled) expanded = true },
@@ -337,7 +279,7 @@ fun DropdownSelector(
             DropdownMenu(
                 expanded = expanded && enabled,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.heightIn(max = 300.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(max=300.dp)
             ) {
                 if (options.isEmpty()) {
                     DropdownMenuItem(

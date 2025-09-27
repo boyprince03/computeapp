@@ -78,7 +78,8 @@ dependencies {
     implementation ("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation ("com.google.accompanist:accompanist-permissions:0.32.0")
     implementation("com.google.code.gson:gson:2.10.1")
-
+// 在 dependencies { ... } 中
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 
 
 
