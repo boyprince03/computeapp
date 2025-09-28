@@ -1,49 +1,40 @@
 package com.stevedaydream.calculatorapp.ui
 
+import android.content.Context
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.stevedaydream.calculatorapp.data.Item
 import com.stevedaydream.calculatorapp.data.ItemDao
-import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import android.content.Context
-import android.net.Uri
-import android.os.Environment
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
 import com.stevedaydream.calculatorapp.data.SavedRecordDao
-import java.io.File
-import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
-import jxl.Workbook
-import jxl.write.Label
-import jxl.write.WritableSheet
-import jxl.write.WritableWorkbook
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     dao: ItemDao,
-    recordDao: SavedRecordDao, // 新增
+    recordDao: SavedRecordDao,
     navController: NavHostController,
     onAddClick: () -> Unit,
     onEditClick: (Int) -> Unit,
     onDeleteClick: (Item) -> Unit,
     navToImport: () -> Unit,
-    onHistoryClick: ()->Unit
+    onHistoryClick: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val items by dao.getAll().collectAsState(initial = emptyList())
@@ -108,16 +99,21 @@ fun MainScreen(
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp) // 水平 padding
                 .fillMaxSize()
         ) {
+            Spacer(modifier = Modifier.height(8.dp)) // 頂部間距
             Button(
-                onClick = { onHistoryClick() }, // 傳遞 lambda
+                onClick = { onHistoryClick() },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("查看歷史紀錄")
             }
-            LazyColumn {
+            Spacer(modifier = Modifier.height(12.dp)) // 按鈕下方間距
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp) // 每個卡片之間的垂直間距
+            ) {
                 items(items) { item ->
                     ItemRow(
                         item = item,
@@ -130,27 +126,55 @@ fun MainScreen(
     }
 }
 
-// ✅ 放在 MainScreen 外面
+/**
+ * 美化後的項目卡片 Composable
+ */
 @Composable
 fun ItemRow(item: Item, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 4.dp)) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("科別：${item.department}")
-            Text("類別：${item.category}")
-            Text("名稱：${item.name}")
-            Text("金額：${item.price}")
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // 增加陰影
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // 左側：項目資訊
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${item.department} / ${item.category}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant // 使用次要顏色
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "$${item.price}",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary // 使用主題強調色
+                )
+            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // 右側：操作按鈕
+            Column(horizontalAlignment = Alignment.End) {
                 Button(onClick = onEdit) {
                     Text("編輯")
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
                     onClick = onDelete,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    // 讓邊框和文字顏色都使用錯誤狀態的顏色
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                 ) {
                     Text("刪除")
                 }
@@ -158,6 +182,7 @@ fun ItemRow(item: Item, onEdit: () -> Unit, onDelete: () -> Unit) {
         }
     }
 }
+
 
 fun exportItemsToExcelJxlSAF(context: Context, items: List<Item>, uri: android.net.Uri) {
     try {

@@ -75,6 +75,7 @@ class CalculatorViewModel(
 
 
     // --- Events from UI ---
+
     fun onBarcodeTextChange(text: String) {
         _barcodeText.value = text
     }
@@ -112,6 +113,10 @@ class CalculatorViewModel(
         _saveMsg.value = null
     }
 
+    fun clearSaveMsg() {
+        _saveMsg.value = null
+    }
+
     fun saveRecord() {
         if (selectedList.value.isEmpty()) {
             _saveMsg.value = "⚠️ 請先選取項目"
@@ -129,7 +134,7 @@ class CalculatorViewModel(
                 )
                 recordDao.insert(record)
                 _saveMsg.value = "✅ 資料已儲存！"
-                resetSelections() // Reset after saving
+                resetSelections() // 儲存後重置
             } catch (e: Exception) {
                 _saveMsg.value = "❌ 儲存失敗：${e.localizedMessage}"
             }
